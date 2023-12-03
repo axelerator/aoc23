@@ -21,24 +21,27 @@ part2 = solve2 input1 |> Num.toStr
 
 main =
     Stdout.line "The answer are: test:\(test) part1:\(part1) part2:\(part2)"
-walkOptions  = {
-    direction : Forwards,
-}
+
 
 
 solve1 : Str -> Nat
 solve1 = \s -> 
     when parseStr parseSchematic s is
         Ok grid ->
-            Array2D.walk grid 0 walkOptions (\sum, _, idx ->  sum + (value grid idx))
+            Array2D.walk grid 0 {direction : Forwards} (\sum, _, idx ->  sum + (value grid idx))
         _ -> 0 
 
 solve2 : Str -> Nat
-solve2 = \_ -> 43
+solve2 = \s -> 
+    when parseStr parseSchematic s is
+        Ok grid ->
+            shape = Array2D.shape grid
+            Array2D.walk grid 0 {direction : Forwards} (\sum, _, idx ->  sum + (gearRatio shape grid idx))
+        _ -> 0 
 
 Parse a : Parser (List U8) a
 
-RowItem : [Dot, Number Nat Nat, Symbol]
+RowItem : [Dot, Number Nat Nat, Symbol, Gear]
 Row : List RowItem
 
 Schematic : Array2D RowItem
@@ -47,27 +50,6 @@ fromRows : List Row -> Schematic
 fromRows = \rows ->
     Array2D.fromLists (List.reverse rows |> List.dropFirst 1 ) FitShortest
         |> Array2D.rotateClockwise
-
-gridStr : Nat,Nat,Schematic -> Str
-gridStr = \width, height, grid ->
-    colRange = 
-        List.range { start: At 0, end: Before width }
-    rowRange = 
-        List.range { start: At 0, end: Before height }
-
-    mkRow = \y ->
-        Str.joinWith (List.map colRange (\x -> cellStr grid {x: x, y:y})) ""
-    gg = Str.joinWith (List.map rowRange mkRow ) "\n"
-    shape = Array2D.shape grid
-    "Shape: dimX: \(Num.toStr shape.dimX) dimY:\(Num.toStr shape.dimY)\n\(gg)"
-
-cellStr : Schematic, Index -> Str
-cellStr = \grid,idx ->
-    when Array2D.get grid idx is
-        Err _ -> "X"
-        Ok (Dot) -> "."
-        Ok (Symbol) -> "*"
-        Ok(Number n _) -> Num.toStr n
 
 parseSchematic : Parse Schematic
 parseSchematic =
@@ -100,11 +82,9 @@ parseSymbol =
     valResult =
         when input is
             [] -> Err (ParsingFailure "Nothing to parse")
-            [c, ..] -> 
-                if c == '\n' then
-                    Err (ParsingFailure "Nothing to parse")
-                else
-                    Ok [Symbol]
+            ['\n', ..] -> Err (ParsingFailure "Nothing to parse")
+            ['*', ..] -> Ok [Gear]
+            _ -> Ok [Symbol]
     valResult
     |> Result.map \val -> { val, input: List.dropFirst input 1 }
 
@@ -142,6 +122,7 @@ isSymbol : Schematic, Index -> Bool
 isSymbol = \grid, idx ->
     when Array2D.get grid idx is
         (Ok Symbol) -> true
+        (Ok Gear) -> true
         _ -> false
 
 value : Schematic, Index -> Nat
@@ -157,6 +138,46 @@ value = \grid, idx ->
                 n
             else 
                 0
+        _ -> 0
+
+gearRatio : Shape,Schematic, Index -> Nat
+gearRatio = \{dimY},grid, gearIdx ->
+    cell = Array2D.get grid gearIdx
+    when cell is
+        Ok Gear ->
+            gearY = gearIdx.y
+            startY =
+                if gearY == 0 then
+                    0
+                else
+                    Num.min (gearY - 1) dimY
+            start = { x: 0, y: startY }
+            walkOptions =
+                { direction: Forwards,
+                  orientation: Cols,
+                  start: start
+                }
+            walker :  List Nat, RowItem, Index -> [Continue (List Nat), Break (List Nat)]
+            walker = \nns, current, currentIdx ->
+                if currentIdx.y > (gearY + 1) then
+                    Break nns
+                else
+                    when current is
+                        Number n width ->
+                            adjacent = adjacentIndices (Array2D.shape grid) currentIdx width
+                            if List.contains adjacent gearIdx then
+                                Continue (List.prepend nns n)
+                            else
+                                Continue (List.prepend nns 0)
+                        _ -> Continue (List.prepend nns 0)
+
+            neighbourNums = 
+                List.keepIf (Array2D.walkUntil grid [] walkOptions walker) (\n -> n > 0)
+
+            when neighbourNums is
+                [a,b] -> a * b
+                _ -> 0
+
         _ -> 0
 
 
@@ -257,4 +278,13 @@ expect
            (value grid {x: 0, y: 0}) == 467
         _ -> false
     
+expect
+    testGrid = parseStr parseSchematic testInput
+    when testGrid is
+        Ok grid -> 
+           (gearRatio (Array2D.shape grid) grid {x: 3, y: 1}) == 16345
+        _ -> false
+
+expect
+   (solve2 testInput ) == 467835
 
