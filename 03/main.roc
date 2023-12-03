@@ -8,8 +8,8 @@ app "example"
         "test-input1.txt" as testInput : Str,
         "input1.txt" as input1 : Str,
         cli.Stdout,
-        Bool.{true, false},
-        parser.Core.{ Parser, skip, const, oneOf, map, sepBy, many, buildPrimitiveParser},
+        Bool.{ true, false },
+        parser.Core.{ Parser, skip, const, oneOf, map, sepBy, many, buildPrimitiveParser },
         parser.String.{ parseStr, digits, string },
         array2d.Array2D.{ Array2D, Index, Shape },
     ]
@@ -22,22 +22,22 @@ part2 = solve2 input1 |> Num.toStr
 main =
     Stdout.line "The answer are: test:\(test) part1:\(part1) part2:\(part2)"
 
-
-
 solve1 : Str -> Nat
-solve1 = \s -> 
+solve1 = \s ->
     when parseStr parseSchematic s is
         Ok grid ->
-            Array2D.walk grid 0 {direction : Forwards} (\sum, _, idx ->  sum + (value grid idx))
-        _ -> 0 
+            Array2D.walk grid 0 { direction: Forwards } (\sum, _, idx -> sum + (value grid idx))
+
+        _ -> 0
 
 solve2 : Str -> Nat
-solve2 = \s -> 
+solve2 = \s ->
     when parseStr parseSchematic s is
         Ok grid ->
             shape = Array2D.shape grid
-            Array2D.walk grid 0 {direction : Forwards} (\sum, _, idx ->  sum + (gearRatio shape grid idx))
-        _ -> 0 
+            Array2D.walk grid 0 { direction: Forwards } (\sum, _, idx -> sum + (gearRatio shape grid idx))
+
+        _ -> 0
 
 Parse a : Parser (List U8) a
 
@@ -48,8 +48,8 @@ Schematic : Array2D RowItem
 
 fromRows : List Row -> Schematic
 fromRows = \rows ->
-    Array2D.fromLists (List.reverse rows |> List.dropFirst 1 ) FitShortest
-        |> Array2D.rotateClockwise
+    Array2D.fromLists (List.reverse rows |> List.dropFirst 1) FitShortest
+    |> Array2D.rotateClockwise
 
 parseSchematic : Parse Schematic
 parseSchematic =
@@ -64,13 +64,15 @@ parseRow =
 parseDot : Parse (List RowItem)
 parseDot =
     const [Dot]
-        |> skip (string ".")
+    |> skip (string ".")
 
 parseNumber : Parse (List RowItem)
 parseNumber =
-    map digits (\n -> 
-            width = (Num.toStr n |> Str.countGraphemes )
-            extraSpaces =  width - 1
+    map
+        digits
+        (\n ->
+            width = (Num.toStr n |> Str.countGraphemes)
+            extraSpaces = width - 1
             prefix = List.repeat Dot extraSpaces
             List.join [[Number n width], prefix]
         )
@@ -89,40 +91,40 @@ parseSymbol =
     |> Result.map \val -> { val, input: List.dropFirst input 1 }
 
 adjacentIndices : Shape, Index, Nat -> List Index
-adjacentIndices = \{dimX, dimY}, {x,y}, width ->
+adjacentIndices = \{ dimX, dimY }, { x, y }, width ->
     left =
         if x == 0 then
             0
-        else 
+        else
             x - 1
-    right = 
+    right =
         Num.min (x + width) (dimX - 1)
-    top = 
-        if y == 0 then 
+    top =
+        if y == 0 then
             0
         else
-           y - 1
+            y - 1
     bottom =
         Num.min (y + 1) (dimY - 1)
     rowIds = List.range { start: At top, end: At bottom }
     colIds = List.range { start: At left, end: At right }
 
     mkRow = \rowY ->
-       if rowY == y then
-           List.join
-               [ if x > 0 then [{x: x - 1, y: rowY }] else [],
-                 if (x + width) < dimX  then [{ x: x + width, y: rowY }] else [] 
-               ]
-       else
-            List.map colIds (\colX -> { x: colX, y: rowY } )
+        if rowY == y then
+            List.join [
+                if x > 0 then [{ x: x - 1, y: rowY }] else [],
+                if (x + width) < dimX then [{ x: x + width, y: rowY }] else [],
+            ]
+        else
+            List.map colIds (\colX -> { x: colX, y: rowY })
     List.map rowIds mkRow
-     |> List.join
+    |> List.join
 
 isSymbol : Schematic, Index -> Bool
 isSymbol = \grid, idx ->
     when Array2D.get grid idx is
-        (Ok Symbol) -> true
-        (Ok Gear) -> true
+        Ok Symbol -> true
+        Ok Gear -> true
         _ -> false
 
 value : Schematic, Index -> Nat
@@ -136,12 +138,13 @@ value = \grid, idx ->
                 List.any adjacent (\neighbour -> isSymbol grid neighbour)
             if hasSymbolNeighbour then
                 n
-            else 
+            else
                 0
+
         _ -> 0
 
-gearRatio : Shape,Schematic, Index -> Nat
-gearRatio = \{dimY},grid, gearIdx ->
+gearRatio : Shape, Schematic, Index -> Nat
+gearRatio = \{ dimY }, grid, gearIdx ->
     cell = Array2D.get grid gearIdx
     when cell is
         Ok Gear ->
@@ -152,12 +155,12 @@ gearRatio = \{dimY},grid, gearIdx ->
                 else
                     Num.min (gearY - 1) dimY
             start = { x: 0, y: startY }
-            walkOptions =
-                { direction: Forwards,
-                  orientation: Cols,
-                  start: start
-                }
-            walker :  List Nat, RowItem, Index -> [Continue (List Nat), Break (List Nat)]
+            walkOptions = {
+                direction: Forwards,
+                orientation: Cols,
+                start: start,
+            }
+            walker : List Nat, RowItem, Index -> [Continue (List Nat), Break (List Nat)]
             walker = \nns, current, currentIdx ->
                 if currentIdx.y > (gearY + 1) then
                     Break nns
@@ -169,17 +172,17 @@ gearRatio = \{dimY},grid, gearIdx ->
                                 Continue (List.prepend nns n)
                             else
                                 Continue (List.prepend nns 0)
+
                         _ -> Continue (List.prepend nns 0)
 
-            neighbourNums = 
+            neighbourNums =
                 List.keepIf (Array2D.walkUntil grid [] walkOptions walker) (\n -> n > 0)
 
             when neighbourNums is
-                [a,b] -> a * b
+                [a, b] -> a * b
                 _ -> 0
 
         _ -> 0
-
 
 expect
     actual = parseStr parseDot "."
@@ -206,10 +209,10 @@ expect
 expect
     actual = parseStr parseSchematic ".123.\n.123+"
     expected =
-        fromRows 
-            [ [Dot, Number 123 3, Dot, Dot, Dot],
-              [Dot, Number 123 3, Dot, Dot, Symbol],
-            ]
+        fromRows [
+            [Dot, Number 123 3, Dot, Dot, Dot],
+            [Dot, Number 123 3, Dot, Dot, Symbol],
+        ]
     actual == Ok expected
 
 expect
@@ -217,6 +220,7 @@ expect
         Ok grid ->
             actual = value grid { x: 1, y: 1 }
             actual == 0
+
         _ ->
             false
 
@@ -225,66 +229,68 @@ expect
         Ok grid ->
             actual = value grid { x: 1, y: 1 }
             actual == 1
+
         _ ->
             false
 
 expect
     shape = { dimX: 3, dimY: 3 }
-    actual = adjacentIndices shape {x: 0, y:0} 1
-    expected =
-        [ {x: 1, y: 0 }
-        , {x: 0, y: 1 }
-        , {x: 1, y: 1 }
-        ]
+    actual = adjacentIndices shape { x: 0, y: 0 } 1
+    expected = [
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+    ]
     actual == expected
 
 expect
     shape = { dimX: 3, dimY: 3 }
-    actual = adjacentIndices shape {x: 1, y:1} 1
-    expected =
-        [ {x: 0, y: 0 }
-        , {x: 1, y: 0 }
-        , {x: 2, y: 0 }
-        , {x: 0, y: 1 }
-        , {x: 2, y: 1 }
-        , {x: 0, y: 2 }
-        , {x: 1, y: 2 }
-        , {x: 2, y: 2 }
-        ]
+    actual = adjacentIndices shape { x: 1, y: 1 } 1
+    expected = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+        { x: 0, y: 1 },
+        { x: 2, y: 1 },
+        { x: 0, y: 2 },
+        { x: 1, y: 2 },
+        { x: 2, y: 2 },
+    ]
     actual == expected
-
 
 expect
     shape = { dimX: 4, dimY: 3 }
-    actual = adjacentIndices shape {x: 1, y:1} 2
-    expected =
-        [ {x: 0, y: 0 }
-        , {x: 1, y: 0 }
-        , {x: 2, y: 0 }
-        , {x: 3, y: 0 }
-        , {x: 0, y: 1 }
-        , {x: 3, y: 1 }
-        , {x: 0, y: 2 }
-        , {x: 1, y: 2 }
-        , {x: 2, y: 2 }
-        , {x: 3, y: 2 }
-        ]
+    actual = adjacentIndices shape { x: 1, y: 1 } 2
+    expected = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+        { x: 3, y: 0 },
+        { x: 0, y: 1 },
+        { x: 3, y: 1 },
+        { x: 0, y: 2 },
+        { x: 1, y: 2 },
+        { x: 2, y: 2 },
+        { x: 3, y: 2 },
+    ]
     actual == expected
 
 expect
     testGrid = parseStr parseSchematic testInput
     when testGrid is
-        Ok grid -> 
-           (value grid {x: 0, y: 0}) == 467
-        _ -> false
-    
-expect
-    testGrid = parseStr parseSchematic testInput
-    when testGrid is
-        Ok grid -> 
-           (gearRatio (Array2D.shape grid) grid {x: 3, y: 1}) == 16345
+        Ok grid ->
+            (value grid { x: 0, y: 0 }) == 467
+
         _ -> false
 
 expect
-   (solve2 testInput ) == 467835
+    testGrid = parseStr parseSchematic testInput
+    when testGrid is
+        Ok grid ->
+            (gearRatio (Array2D.shape grid) grid { x: 3, y: 1 }) == 16345
+
+        _ -> false
+
+expect
+    (solve2 testInput) == 467835
 

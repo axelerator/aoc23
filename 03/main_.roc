@@ -8,8 +8,8 @@ app "example"
         "test-input1.txt" as testInput : Str,
         "input1.txt" as input1 : Str,
         cli.Stdout,
-        Bool.{true, false},
-        parser.Core.{ Parser, skip, keep, const, oneOf, map, sepBy, many, buildPrimitiveParser, apply},
+        Bool.{ true, false },
+        parser.Core.{ Parser, skip, keep, const, oneOf, map, sepBy, many, buildPrimitiveParser, apply },
         parser.String.{ parseStr, digits, string },
         array2d.Array2D.{ Array2D },
     ]
@@ -20,14 +20,13 @@ part1 = solve1 input1 |> Num.toStr
 part2 = solve2 input1 |> Num.toStr
 
 main =
-  Stdout.line "The answer are: test:\(test) part1:\(part1) part2:\(part2)"
+    Stdout.line "The answer are: test:\(test) part1:\(part1) part2:\(part2)"
 
 solve1 : Str -> Nat
 solve1 = \s -> 42
 
 solve2 : Str -> Nat
 solve2 = \s -> 43
-
 
 Parse a : Parser (List U8) a
 
@@ -39,7 +38,6 @@ Schematic : Array2D RowItem
 fromRows : List Row -> Schematic
 fromRows = \rows ->
     Array2D.fromLists rows FitShortest
-
 
 parseSchematic : Parse Schematic
 parseSchematic =
@@ -54,18 +52,18 @@ parseRow =
 parseDot : Parse (List RowItem)
 parseDot =
     const [Dot]
-        |> skip (string ".")
+    |> skip (string ".")
 
 spaceAwareNumber : Nat -> List RowItem
 spaceAwareNumber = \n ->
-    #suffix = List.repeat Dot 2 # (Num.toStr n |> Str.countGraphemes) 
-    #List.join [[Dot], [Number n]]
+    # suffix = List.repeat Dot 2 # (Num.toStr n |> Str.countGraphemes)
+    # List.join [[Dot], [Number n]]
     []
 
 parseNumber : Parse (List RowItem)
 parseNumber =
     const spaceAwareNumber
-        |> keep digits
+    |> keep digits
 
 parseSymbol : Parse (List RowItem)
 parseSymbol =
@@ -74,7 +72,7 @@ parseSymbol =
     valResult =
         when input is
             [] -> Err (ParsingFailure "Nothing to parse")
-            [c, ..] -> 
+            [c, ..] ->
                 if c == '\n' then
                     Err (ParsingFailure "Nothing to parse")
                 else
@@ -89,19 +87,19 @@ expect
     actual = parseStr parseDot "."
     actual == Ok [Dot]
 
-#expect
+# expect
 #    actual = parseStr parseNumber "123"
 #    actual == Ok [Number 123, Dot, Dot]
 
-#expect
+# expect
 #    actual = parseStr parseRow ".12+."
 #    actual == Ok [Dot, Number 12, Symbol, Dot]
 
-#expect
+# expect
 #    actual = parseStr parseRow ".123."
 #    actual == Ok [Dot, Number 123, Dot, Dot, Dot]
 
-#expect
+# expect
 #    expected =
 #        fromRows [[Dot, Number 1], [Number 2, Symbol]]
 #    actual = parseStr parseSchematic ".1\n2$"
